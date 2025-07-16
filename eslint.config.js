@@ -5,11 +5,19 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
-
 export default defineConfig([
   globalIgnores(['dist']),
   {
     files: ['**/*.{js,jsx}'],
+    settings: {
+      react: {
+        version: 'detect',
+      }
+    },
+    plugins: {
+      react: react,
+     
+    },
     extends: [
       js.configs.recommended,
       reactHooks.configs['recommended-latest'],
@@ -24,20 +32,15 @@ export default defineConfig([
         sourceType: 'module',
       },
     },
-    settings: {
-  react: {
-    version: 'detect',
-  },
-},
-    plugins: [react, reactHooks],
-
-
     rules: {
-      'no-unused-vars': 'warn',
-      'react/prop-types': 'off',
+      ...js.configs.recommended.rules,
       ...react.configs.recommended.rules,
       ...react.configs['jsx-runtime'].rules,
-  },
-
+      'no-unused-vars': 'warn',
+      'react/prop-types': 'off',
+    },
   },
 ])
+
+
+
