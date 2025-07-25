@@ -5,14 +5,20 @@ import TodoForm from './TodoForm';
 
 
 function App() {
-  const [newTodo, setNewTodo] = useState('My first todo');
+  const [todoList, setTodoList] = useState([]);
+  function handleAddTodo(title) {
+  const newTodo = {
+    title: title,
+    id: Date.now()
+  };
+  setTodoList([...todoList, newTodo]);
+}
   return (
   <div>
     <h1>My Todo List</h1>
-    <TodoForm />
-    {/* Display the current value of newTodo */}
-    <p>{newTodo}</p>
-    <TodoList />
+    <TodoForm  onAddTodo={handleAddTodo} />
+   
+    <TodoList todoList={todoList} />
     
   </div>
 );
