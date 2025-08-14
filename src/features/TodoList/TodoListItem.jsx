@@ -34,7 +34,7 @@ function TodoListItem({ todo, onCompleteTodo, onUpdateTodo }) {
               labelText="Edit Todo"
               value={workingTitle}
               onChange={handleEdit}
-              inputRef={null}
+              
             />
             <button type="button" onClick={handleCancel}>
               Cancel
