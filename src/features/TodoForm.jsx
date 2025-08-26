@@ -13,7 +13,10 @@ function TodoForm({ onAddTodo, isSaving }) {
       return;
     }
 
-    onAddTodo(workingTodoTitle); 
+    onAddTodo({
+      title: workingTodoTitle,
+      isCompleted: false,
+    }); 
     setWorkingTodo(""); 
     todoTitleInput.current?.focus(); 
   }

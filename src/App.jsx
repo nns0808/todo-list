@@ -53,15 +53,15 @@ function App() {
   }, []);
 
 // add Todo
-  const addTodo = async (title) => {
+  const addTodo = async (newTodo) => {
   setIsSaving(true);
   try {
     const payload = {
       records: [
         {
           fields: {
-            title: title.trim(),          
-            isCompleted: false,    
+            title: newTodo.title,          
+            isCompleted: newTodo.isCompleted,    
           },
         },
       ],
