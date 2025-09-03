@@ -202,7 +202,7 @@ function App() {
     };
 
     try {
-      const resp = await fetch(url, options);
+      const resp = await fetch(encodeUrl({sortField, sortDirection, queryString}), options);
 
       if (!resp.ok) {
         throw new Error(`Error ${resp.status}: ${resp.statusText}`);
@@ -237,17 +237,6 @@ function App() {
       <h1>My Todo List</h1>
 
       <TodoForm onAddTodo={addTodo} isSaving={isSaving} />
-
-      <div>
-      <label htmlFor="search">Search: </label>
-      <input
-        id="search"
-        type="text"
-        value={queryString}
-        onChange={(e) => setQueryString(e.target.value)}
-        placeholder="Search todos..."
-      />
-    </div>
 
       <TodoList
         todoList={todoList}
