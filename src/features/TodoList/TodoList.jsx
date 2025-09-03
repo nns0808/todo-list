@@ -9,6 +9,8 @@ function TodoList({ todoList, onCompleteTodo, onUpdateTodo, isLoading }) {
     return <p>No todos yet!</p>;
   }
   const filteredTodoList = todoList.filter((todo) => !todo.isCompleted);
+
+  
   return (
     <>
       {filteredTodoList.length === 0 ? (
