@@ -1,19 +1,8 @@
 import './App.css';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import TodoList from './features/TodoList/TodoList';
 import TodoForm from './features/TodoForm';
 import TodosViewForm from "./features/TodosViewForm";
-
-
-function encodeUrl({ sortField, sortDirection, queryString }) {
-  const baseUrl = `https://api.airtable.com/v0/${import.meta.env.VITE_BASE_ID}/${import.meta.env.VITE_TABLE_NAME}`;
-  let sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
-  let searchQuery = "";
-  if (queryString) {
-    searchQuery = `&filterByFormula=SEARCH("${queryString}", title)`;
-  }
-  return encodeURI(`${baseUrl}?${sortQuery}${searchQuery}`);
-}
 
 function App() {
   const [todoList, setTodoList] = useState([]);
@@ -23,23 +12,36 @@ function App() {
 
   const [sortField, setSortField] = useState("createdTime");   
   const [sortDirection, setSortDirection] = useState("desc");
-
   const [queryString, setQueryString] = useState("");
 
-  const url = `https://api.airtable.com/v0/${import.meta.env.VITE_BASE_ID}/${import.meta.env.VITE_TABLE_NAME}`;
+
   const token = `Bearer ${import.meta.env.VITE_PAT}`;
 
-  // Fetch todos fron Airtable
+  // useCallback
+  const encodeUrl = useCallback(() => {
+  const baseUrl = `https://api.airtable.com/v0/${import.meta.env.VITE_BASE_ID}/${import.meta.env.VITE_TABLE_NAME}`;
+  
+  let sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
+  let searchQuery = "";
+  if (queryString) {
+    
+    searchQuery = `&filterByFormula=SEARCH("${queryString}", title) > 0`;
+  }
+  return encodeURI(`${baseUrl}?${sortQuery}${searchQuery}`);
+}, [sortField, sortDirection, queryString]);
+
+
+  // Fetch todos from Airtable
   useEffect(() => {
     const fetchTodos = async () => {
       setIsLoading(true);
       setErrorMessage("");
 
       try {
-        const response = await fetch(
-          encodeUrl({ sortField, sortDirection, queryString }),
-          {
-        
+        console.log("Fetching from URL:", encodeUrl());
+        console.log("Current queryString:", queryString);
+
+        const response = await fetch(encodeUrl(), {
           headers: {
             Authorization: token,
             "Content-Type": "application/json",
@@ -70,58 +72,57 @@ function App() {
     };
 
     fetchTodos();
-  }, [sortField, sortDirection, queryString]);
+  }, [encodeUrl, token]);
 
-// add Todo
+  // add Todo
   const addTodo = async (newTodo) => {
-  setIsSaving(true);
-  try {
-    const payload = {
-      records: [
-        {
-          fields: {
-            title: newTodo.title,          
-            isCompleted: newTodo.isCompleted,    
+    setIsSaving(true);
+    try {
+      const payload = {
+        records: [
+          {
+            fields: {
+              title: newTodo.title,
+              isCompleted: newTodo.isCompleted,
+            },
           },
+        ],
+      };
+
+      const options = {
+        method: 'POST',
+        headers: {
+          Authorization: token,
+          'Content-Type': 'application/json',
         },
-      ],
-    };
+        body: JSON.stringify(payload),
+      };
 
-    
+      const response = await fetch(encodeUrl(), options);
+      
 
-    const options = {
-      method: 'POST',
-      headers: {
-        Authorization: token,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    };
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
 
-    const response = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
+      const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    const createdTodo = {
+      const createdTodo = {
         id: data.records[0].id,
         title: data.records[0].fields.title,
         isCompleted: data.records[0].fields.isCompleted || false,
+        createdTime: data.records[0].createdTime,
       };
 
-    setTodoList((prev) => [...prev, createdTodo]);
-  } catch (error) {
-    setErrorMessage(error.message);
-  } finally {
-    setIsSaving(false);
-  }
-};
+      setTodoList((prev) => [...prev, createdTodo]);
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-// complete Todo
-
+  // handeComplete Todo
   const handleCompleteTodo = async (id) => {
     setIsSaving(true);
     const originalTodo = todoList.find((todo) => todo.id === id);
@@ -155,13 +156,13 @@ function App() {
     };
 
     try {
-      const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
+      const resp = await fetch(encodeUrl(), options);
+      
+
 
       if (!resp.ok) {
         throw new Error(`Error ${resp.status}: ${resp.statusText}`);
       }
-
-      
     } catch (error) {
       console.error(error);
       setErrorMessage(`${error.message}. Reverting todo...`);
@@ -172,12 +173,12 @@ function App() {
     } finally {
       setIsSaving(false);
     }
-  }
+  };
 
   // updateTodo
   async function updateTodo(editedTodo) {
     setIsSaving(true);
-    
+
     const originalTodo = todoList.find((todo) => todo.id === editedTodo.id);
 
     const payload = {
@@ -202,7 +203,8 @@ function App() {
     };
 
     try {
-      const resp = await fetch(encodeUrl({sortField, sortDirection, queryString}), options);
+      const resp = await fetch(encodeUrl(), options);
+      
 
       if (!resp.ok) {
         throw new Error(`Error ${resp.status}: ${resp.statusText}`);
@@ -241,23 +243,20 @@ function App() {
       <TodoList
         todoList={todoList}
         onCompleteTodo={handleCompleteTodo}
-        onUpdateTodo={updateTodo}  
+        onUpdateTodo={updateTodo}
         isLoading={isLoading}
-        
       />
 
       <hr />
 
-      
       <TodosViewForm
         sortField={sortField}
         setSortField={setSortField}
         sortDirection={sortDirection}
         setSortDirection={setSortDirection}
-        queryString={queryString}         
+        queryString={queryString}
         setQueryString={setQueryString}
       />
-
 
       {errorMessage && (
         <div>

@@ -1,4 +1,29 @@
-function TodosViewForm({ sortField, setSortField, sortDirection, setSortDirection, queryString,  setQueryString }) {
+import { useState, useEffect } from "react";
+
+function TodosViewForm({ 
+  sortField,
+  setSortField,
+  sortDirection,
+  setSortDirection,
+  queryString,
+  setQueryString
+ }) {
+  const [localQueryString, setLocalQueryString] = useState(queryString);
+  
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      console.log("Debounced query:", localQueryString);
+      setQueryString(localQueryString);
+    }, 500);
+
+    return () => clearTimeout(debounce);
+  }, [localQueryString, setQueryString]);
+
+  useEffect(() => {
+  setLocalQueryString(queryString);
+}, [queryString]);
+
+  
   function preventRefresh(e) {
     e.preventDefault();
   }  
@@ -19,11 +44,11 @@ function TodosViewForm({ sortField, setSortField, sortDirection, setSortDirectio
             <input
             id="search"
             type="text"
-            value={queryString}
-            onChange={(e) => setQueryString(e.target.value)}
+            value={localQueryString}
+            onChange={(e) => setLocalQueryString(e.target.value)}
             placeholder="Type to filter..."
             />
-            <button type="button" onClick={() => setQueryString("")}>
+            <button type="button" onClick={() => setLocalQueryString("")}>
             Clear
             </button>
        </div>
