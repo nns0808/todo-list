@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import TodoList from './features/TodoList/TodoList';
 import TodoForm from './features/TodoForm';
 import TodosViewForm from "./features/TodosViewForm";
+import styles from "./App.module.css";
+
 
 function App() {
   const [todoList, setTodoList] = useState([]);
@@ -235,7 +237,8 @@ function App() {
   }
 
   return (
-    <div>
+    <div className={styles.app}>
+     
       <h1>My Todo List</h1>
 
       <TodoForm onAddTodo={addTodo} isSaving={isSaving} />
@@ -259,13 +262,15 @@ function App() {
       />
 
       {errorMessage && (
-        <div>
+        <div className={styles.error}>
           <hr />
           <p>{errorMessage}</p>
           <button onClick={() => setErrorMessage("")}>Dismiss</button>
         </div>
       )}
+
     </div>
+
   );
 }
 
