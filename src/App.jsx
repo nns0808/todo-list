@@ -21,12 +21,15 @@ function App() {
 
   // useCallback for URL encoding
   const encodeUrl = useCallback(() => {
-    const sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
-    const searchQuery = queryString
-      ? `&filterByFormula=SEARCH("${queryString}", title) > 0`
-      : "";
-    return encodeURI(`${baseUrl}?${sortQuery}${searchQuery}`);
+  
+   const sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
+   const searchQuery = queryString
+     ? `&filterByFormula=SEARCH("${encodeURIComponent(queryString)}", {title})`
+     : "";
+   return `${baseUrl}?${sortQuery}${searchQuery}`;
   }, [sortField, sortDirection, queryString]);
+
+
 
   // Fetch todos from Airtable
   useEffect(() => {
@@ -77,6 +80,9 @@ function App() {
         },
         body: JSON.stringify(payload),
       };
+
+      
+
 
       const response = await fetch(tableUrl, options);
       if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -145,6 +151,10 @@ function App() {
       },
       body: JSON.stringify(payload),
     };
+
+
+    console.log("Payload being sent to Airtable:", JSON.stringify(payload, null, 2));
+
 
     try {
       const resp = await fetch(tableUrl, options);

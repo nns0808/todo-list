@@ -13,12 +13,6 @@ export { initialState };
 // Actions
 export const actions = {
   addTodo: "addTodo",
-  removeTodo: "removeTodo",
-  toggleTodo: "toggleTodo",
-
-  saveTodoStart: "saveTodoStart",
-  saveTodoSuccess: "saveTodoSuccess",
-  saveTodoError: "saveTodoError",
 
   fetchTodos: "fetchTodos",
   loadTodos: "loadTodos",
@@ -55,7 +49,7 @@ export function todosReducer(state = initialState, action) {
         todoList: action.records.map((record) => ({
           id: record.id,
           title: record.fields.title,
-          isCompleted: record.fields.isCompleted || false, 
+          isCompleted: record.fields.isCompleted || false,
         })),
         errorMessage: null,
       };
@@ -78,7 +72,7 @@ export function todosReducer(state = initialState, action) {
       const savedTodo = {
         id: action.record.id,
         title: action.record.fields.title,
-        isCompleted: action.record.fields.isCompleted || false, 
+        isCompleted: action.record.fields.isCompleted || false,
       };
 
       return {
@@ -95,22 +89,6 @@ export function todosReducer(state = initialState, action) {
         isSaving: false,
       };
 
-    case actions.removeTodo:
-      return {
-        ...state,
-        todoList: state.todoList.filter((todo) => todo.id !== action.payload),
-      };
-
-    case actions.toggleTodo:
-      return {
-        ...state,
-        todoList: state.todoList.map((todo) =>
-          todo.id === action.payload
-            ? { ...todo, isCompleted: !todo.isCompleted }
-            : todo
-        ),
-      };
-
     case actions.revertTodo:
     case actions.updateTodo: {
       const updatedTodos = state.todoList.map((todo) =>
@@ -120,7 +98,7 @@ export function todosReducer(state = initialState, action) {
       const updatedState = {
         ...state,
         todoList: updatedTodos,
-        isSaving: false, 
+        isSaving: false,
       };
 
       if (action.error) {
@@ -148,19 +126,6 @@ export function todosReducer(state = initialState, action) {
         errorMessage: null,
       };
 
-    case actions.saveTodoStart:
-      return {
-        ...state,
-        isSaving: true,
-      };
-
-    case actions.saveTodoSuccess:
-    case actions.saveTodoError:
-      return {
-        ...state,
-        isSaving: false,
-      };
-
     case actions.setSortField:
       return {
         ...state,
@@ -183,5 +148,3 @@ export function todosReducer(state = initialState, action) {
       return state;
   }
 }
-
-
