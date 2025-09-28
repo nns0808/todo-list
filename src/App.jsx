@@ -1,48 +1,41 @@
 import './App.css';
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useReducer } from 'react';
 import TodoList from './features/TodoList/TodoList';
 import TodoForm from './features/TodoForm';
 import TodosViewForm from "./features/TodosViewForm";
 import styles from "./App.module.css";
 
+import {
+  todosReducer,
+  actions as todoActions,
+  initialState as initialTodosState,
+} from './reducers/todos.reducer';
 
 function App() {
-  const [todoList, setTodoList] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-
-  const [sortField, setSortField] = useState("createdTime");   
-  const [sortDirection, setSortDirection] = useState("desc");
-  const [queryString, setQueryString] = useState("");
-
+  const [todoState, dispatch] = useReducer(todosReducer, initialTodosState);
+  const { todoList, isLoading, isSaving, errorMessage, sortField, sortDirection, queryString } = todoState;
 
   const token = `Bearer ${import.meta.env.VITE_PAT}`;
   const baseUrl = `https://api.airtable.com/v0/${import.meta.env.VITE_BASE_ID}/${import.meta.env.VITE_TABLE_NAME}`;
-  
-  // useCallback
-  const encodeUrl = useCallback(() => {
+  const tableUrl = baseUrl;
 
-  let sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
-  let searchQuery = "";
-  if (queryString) {
-    
-    searchQuery = `&filterByFormula=SEARCH("${queryString}", title) > 0`;
-  }
-  return encodeURI(`${baseUrl}?${sortQuery}${searchQuery}`);
-}, [sortField, sortDirection, queryString]);
+  // useCallback for URL encoding
+  const encodeUrl = useCallback(() => {
+  
+   const sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
+   const searchQuery = queryString
+     ? `&filterByFormula=SEARCH("${encodeURIComponent(queryString)}", {title})`
+     : "";
+   return `${baseUrl}?${sortQuery}${searchQuery}`;
+  }, [sortField, sortDirection, queryString]);
+
 
 
   // Fetch todos from Airtable
   useEffect(() => {
     const fetchTodos = async () => {
-      setIsLoading(true);
-      setErrorMessage("");
-
+      dispatch({ type: todoActions.fetchTodos });
       try {
-        console.log("Fetching from URL:", encodeUrl());
-        console.log("Current queryString:", queryString);
-
         const response = await fetch(encodeUrl(), {
           headers: {
             Authorization: token,
@@ -50,46 +43,34 @@ function App() {
           },
         });
 
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
-
+        if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
         const data = await response.json();
 
-        const fetchedTodos = data.records.map((record) => {
-          const todo = {
-            id: record.id,
-            ...record.fields,
-          };
-          if (!todo.isCompleted) todo.isCompleted = false;
-          return todo;
-        });
-
-        setTodoList(fetchedTodos);
+        dispatch({ type: todoActions.loadTodos, records: data.records });
       } catch (error) {
-        setErrorMessage(error.message);
-      } finally {
-        setIsLoading(false);
+        dispatch({ type: todoActions.setLoadError, error });
       }
     };
 
     fetchTodos();
   }, [encodeUrl, token]);
 
-  // add Todo
+  // Add Todo
   const addTodo = async (newTodo) => {
-    setIsSaving(true);
+    dispatch({ type: todoActions.startRequest });
+    dispatch({ type: todoActions.clearError });
     try {
       const payload = {
         records: [
           {
             fields: {
-              title: newTodo.title,
-              isCompleted: newTodo.isCompleted,
-            },
-          },
-        ],
+              title: String(newTodo.title),       // must be string
+              isCompleted: !!newTodo.isCompleted // convert to boolean for Airtable checkbox
+            }
+          }
+        ]
       };
+      
 
       const options = {
         method: 'POST',
@@ -100,145 +81,93 @@ function App() {
         body: JSON.stringify(payload),
       };
 
-      const response = await fetch(encodeUrl(), options);
       
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
+
+      const response = await fetch(tableUrl, options);
+      if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
 
       const data = await response.json();
-
-      const createdTodo = {
-        id: data.records[0].id,
-        title: data.records[0].fields.title,
-        isCompleted: data.records[0].fields.isCompleted || false,
-        createdTime: data.records[0].createdTime,
-      };
-
-      setTodoList((prev) => [...prev, createdTodo]);
+      dispatch({ type: todoActions.addTodo, record: data.records[0] });
     } catch (error) {
-      setErrorMessage(error.message);
+      dispatch({ type: todoActions.setLoadError, error });
     } finally {
-      setIsSaving(false);
+      dispatch({ type: todoActions.endRequest });
     }
   };
 
-  // handeComplete Todo
+  // Complete Todo
   const handleCompleteTodo = async (id) => {
-    setIsSaving(true);
-    const originalTodo = todoList.find((todo) => todo.id === id);
+    const originalTodo = todoList.find(todo => todo.id === id);
     if (!originalTodo) return;
 
-    const updatedTodo = { ...originalTodo, isCompleted: true };
-
-    setTodoList((prev) =>
-      prev.map((todo) => (todo.id === id ? updatedTodo : todo))
-    );
+    dispatch({ type: todoActions.completeTodo, id });
+    dispatch({ type: todoActions.clearError });
 
     const payload = {
       records: [
-        {
-          id: id,
-          fields: {
-            title: updatedTodo.title,
-            isCompleted: true,
-          },
-        },
-      ],
+        { id, fields: { title: originalTodo.title, isCompleted: true } }
+      ]
     };
 
     const options = {
-      method: "PATCH",
+      method: 'PATCH',
       headers: {
         Authorization: token,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     };
 
     try {
-      const resp = await fetch(encodeUrl(), options);
-      
-
-
-      if (!resp.ok) {
-        throw new Error(`Error ${resp.status}: ${resp.statusText}`);
-      }
+      const resp = await fetch(tableUrl, options);
+      if (!resp.ok) throw new Error(`Error ${resp.status}: ${resp.statusText}`);
     } catch (error) {
-      console.error(error);
-      setErrorMessage(`${error.message}. Reverting todo...`);
-
-      setTodoList((prev) =>
-        prev.map((todo) => (todo.id === id ? originalTodo : todo))
-      );
-    } finally {
-      setIsSaving(false);
+      dispatch({ type: todoActions.revertTodo, editedTodo: originalTodo, error });
     }
   };
 
-  // updateTodo
-  async function updateTodo(editedTodo) {
-    setIsSaving(true);
-
-    const originalTodo = todoList.find((todo) => todo.id === editedTodo.id);
+  // Update Todo
+  const updateTodo = async (editedTodo) => {
+    const originalTodo = todoList.find(todo => todo.id === editedTodo.id);
 
     const payload = {
-      records: [
+          records: [
         {
           id: editedTodo.id,
           fields: {
-            title: editedTodo.title,
-            isCompleted: editedTodo.isCompleted,
-          },
-        },
-      ],
+            title: String(editedTodo.title),
+            isCompleted: !!editedTodo.isCompleted
+          }
+        }
+      ]
     };
 
     const options = {
-      method: "PATCH",
+      method: 'PATCH',
       headers: {
         Authorization: token,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     };
 
+
+    console.log("Payload being sent to Airtable:", JSON.stringify(payload, null, 2));
+
+
     try {
-      const resp = await fetch(encodeUrl(), options);
-      
+      const resp = await fetch(tableUrl, options);
+      if (!resp.ok) throw new Error(`Error ${resp.status}: ${resp.statusText}`);
 
-      if (!resp.ok) {
-        throw new Error(`Error ${resp.status}: ${resp.statusText}`);
-      }
-
-      const data = await resp.json();
-
-      const updatedTodo = {
-        id: data.records[0].id,
-        ...data.records[0].fields,
-      };
-
-      const updatedTodos = todoList.map((todo) =>
-        todo.id === updatedTodo.id ? updatedTodo : todo
-      );
-      setTodoList(updatedTodos);
+      dispatch({ type: todoActions.updateTodo, editedTodo });
     } catch (error) {
-      console.error(error);
-      setErrorMessage(`${error.message}. Reverting todo...`);
-
-      const revertedTodos = todoList.map((todo) =>
-        todo.id === originalTodo.id ? originalTodo : todo
-      );
-      setTodoList(revertedTodos);
-    } finally {
-      setIsSaving(false);
+      dispatch({ type: todoActions.revertTodo, editedTodo: originalTodo, error });
     }
-  }
+  };
 
   return (
     <div className={styles.app}>
-     
       <h1>My Todo List</h1>
 
       <TodoForm onAddTodo={addTodo} isSaving={isSaving} />
@@ -254,23 +183,21 @@ function App() {
 
       <TodosViewForm
         sortField={sortField}
-        setSortField={setSortField}
+        setSortField={(field) => dispatch({ type: todoActions.setSortField, payload: field })}
         sortDirection={sortDirection}
-        setSortDirection={setSortDirection}
+        setSortDirection={(dir) => dispatch({ type: todoActions.setSortDirection, payload: dir })}
         queryString={queryString}
-        setQueryString={setQueryString}
+        setQueryString={(q) => dispatch({ type: todoActions.setQueryString, payload: q })}
       />
 
       {errorMessage && (
         <div className={styles.error}>
           <hr />
           <p>{errorMessage}</p>
-          <button onClick={() => setErrorMessage("")}>Dismiss</button>
+          <button onClick={() => dispatch({ type: todoActions.clearError })}>Dismiss</button>
         </div>
       )}
-
     </div>
-
   );
 }
 
