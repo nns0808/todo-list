@@ -1,9 +1,11 @@
 import './App.css';
-import { useEffect, useCallback, useReducer } from 'react';
-import TodoList from './features/TodoList/TodoList';
-import TodoForm from './features/TodoForm';
-import TodosViewForm from "./features/TodosViewForm";
-import styles from "./App.module.css";
+import { useEffect, useCallback, useReducer, useState } from 'react';
+import { useLocation, Routes, Route } from 'react-router-dom'; 
+import TodosPage from './pages/TodosPage';
+import Header from './shared/Header';
+import About from './pages/About';
+import NotFound from './pages/NotFound';
+
 
 import {
   todosReducer,
@@ -15,23 +17,34 @@ function App() {
   const [todoState, dispatch] = useReducer(todosReducer, initialTodosState);
   const { todoList, isLoading, isSaving, errorMessage, sortField, sortDirection, queryString } = todoState;
 
+  const [title, setTitle] = useState("Todo List");
+  const location = useLocation();
+
   const token = `Bearer ${import.meta.env.VITE_PAT}`;
   const baseUrl = `https://api.airtable.com/v0/${import.meta.env.VITE_BASE_ID}/${import.meta.env.VITE_TABLE_NAME}`;
   const tableUrl = baseUrl;
 
-  // useCallback for URL encoding
+  // Update header title based on route
+  useEffect(() => {
+    if (location.pathname === "/") {
+      setTitle("Todo List");
+    } else if (location.pathname === "/about") {
+      setTitle("About");
+    } else {
+      setTitle("Not Found");
+    }
+  }, [location]);
+
+  // Encode URL
   const encodeUrl = useCallback(() => {
-  
-   const sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
-   const searchQuery = queryString
-     ? `&filterByFormula=SEARCH("${encodeURIComponent(queryString)}", {title})`
-     : "";
-   return `${baseUrl}?${sortQuery}${searchQuery}`;
+    const sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
+    const searchQuery = queryString
+      ? `&filterByFormula=SEARCH("${encodeURIComponent(queryString)}", {title})`
+      : "";
+    return `${baseUrl}?${sortQuery}${searchQuery}`;
   }, [sortField, sortDirection, queryString]);
 
-
-
-  // Fetch todos from Airtable
+  // Fetch todos
   useEffect(() => {
     const fetchTodos = async () => {
       dispatch({ type: todoActions.fetchTodos });
@@ -64,13 +77,12 @@ function App() {
         records: [
           {
             fields: {
-              title: String(newTodo.title),       // must be string
-              isCompleted: !!newTodo.isCompleted // convert to boolean for Airtable checkbox
-            }
-          }
-        ]
+              title: String(newTodo.title),
+              isCompleted: !!newTodo.isCompleted,
+            },
+          },
+        ],
       };
-      
 
       const options = {
         method: 'POST',
@@ -80,9 +92,6 @@ function App() {
         },
         body: JSON.stringify(payload),
       };
-
-      
-
 
       const response = await fetch(tableUrl, options);
       if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -106,8 +115,8 @@ function App() {
 
     const payload = {
       records: [
-        { id, fields: { title: originalTodo.title, isCompleted: true } }
-      ]
+        { id, fields: { title: originalTodo.title, isCompleted: true } },
+      ],
     };
 
     const options = {
@@ -132,15 +141,15 @@ function App() {
     const originalTodo = todoList.find(todo => todo.id === editedTodo.id);
 
     const payload = {
-          records: [
+      records: [
         {
           id: editedTodo.id,
           fields: {
             title: String(editedTodo.title),
-            isCompleted: !!editedTodo.isCompleted
-          }
-        }
-      ]
+            isCompleted: !!editedTodo.isCompleted,
+          },
+        },
+      ],
     };
 
     const options = {
@@ -151,10 +160,6 @@ function App() {
       },
       body: JSON.stringify(payload),
     };
-
-
-    console.log("Payload being sent to Airtable:", JSON.stringify(payload, null, 2));
-
 
     try {
       const resp = await fetch(tableUrl, options);
@@ -167,38 +172,36 @@ function App() {
   };
 
   return (
-    <div className={styles.app}>
-      <h1>My Todo List</h1>
-
-      <TodoForm onAddTodo={addTodo} isSaving={isSaving} />
-
-      <TodoList
-        todoList={todoList}
-        onCompleteTodo={handleCompleteTodo}
-        onUpdateTodo={updateTodo}
-        isLoading={isLoading}
-      />
-
-      <hr />
-
-      <TodosViewForm
-        sortField={sortField}
-        setSortField={(field) => dispatch({ type: todoActions.setSortField, payload: field })}
-        sortDirection={sortDirection}
-        setSortDirection={(dir) => dispatch({ type: todoActions.setSortDirection, payload: dir })}
-        queryString={queryString}
-        setQueryString={(q) => dispatch({ type: todoActions.setQueryString, payload: q })}
-      />
-
-      {errorMessage && (
-        <div className={styles.error}>
-          <hr />
-          <p>{errorMessage}</p>
-          <button onClick={() => dispatch({ type: todoActions.clearError })}>Dismiss</button>
-        </div>
-      )}
-    </div>
+    <>
+      <Header title={title} />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <TodosPage
+              todoList={todoList}
+              isLoading={isLoading}
+              isSaving={isSaving}
+              errorMessage={errorMessage}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              queryString={queryString}
+              addTodo={addTodo}
+              handleCompleteTodo={handleCompleteTodo}
+              updateTodo={updateTodo}
+              setSortField={(field) => dispatch({ type: todoActions.setSortField, payload: field })}
+              setSortDirection={(dir) => dispatch({ type: todoActions.setSortDirection, payload: dir })}
+              setQueryString={(q) => dispatch({ type: todoActions.setQueryString, payload: q })}
+              clearError={() => dispatch({ type: todoActions.clearError })}
+            />
+          }
+        />
+        <Route path="/about" element={<About />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 }
 
 export default App;
+

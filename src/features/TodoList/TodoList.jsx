@@ -6,19 +6,17 @@ function TodoList({ todoList, onCompleteTodo, onUpdateTodo, isLoading }) {
     return <p>Todo list loading...</p>;
   }
 
-  if (todoList.length === 0) {
+  if (!todoList || todoList.length === 0) {
     return <p>No todos yet!</p>;
   }
-  const filteredTodoList = todoList.filter((todo) => !todo.isCompleted);
 
-  
   return (
     <>
-      {filteredTodoList.length === 0 ? (
+      {todoList.length === 0 ? (
         <p>Add todo above to get started</p>
       ) : (
         <ul className={styles.todoList}>
-          {filteredTodoList.map((todo) => (
+          {todoList.map((todo) => (
             <TodoListItem
               key={todo.id}
               todo={todo}
@@ -33,3 +31,4 @@ function TodoList({ todoList, onCompleteTodo, onUpdateTodo, isLoading }) {
 }
 
 export default TodoList;
+
