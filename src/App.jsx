@@ -98,6 +98,8 @@ function App() {
 
       const data = await response.json();
       dispatch({ type: todoActions.addTodo, record: data.records[0] });
+      
+
     } catch (error) {
       dispatch({ type: todoActions.setLoadError, error });
     } finally {

@@ -39,9 +39,13 @@ function TodosPage({
 
   // Add new todo → reset to page 1
   const handleAddTodo = async (newTodo) => {
-    await addTodo(newTodo);
+    try {
+      await addTodo(newTodo);
     setSearchParams({ page: "1" });
-  };
+  } catch (error) {
+    console.error("Error while addidng a task:", error);
+  }
+};
 
   // validate page param only after we know totalPages
   useEffect(() => {
