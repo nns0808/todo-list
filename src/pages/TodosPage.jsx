@@ -20,6 +20,7 @@ function TodosPage({
   setSortDirection,
   setQueryString,
   clearError,
+  
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -65,6 +66,8 @@ function TodosPage({
 
   return (
     <div className={styles.todosPageContainer}>
+      
+
       <TodoForm onAddTodo={handleAddTodo} isSaving={isSaving} />
 
       <TodoList
@@ -121,5 +124,3 @@ function TodosPage({
 }
 
 export default TodosPage;
-
-

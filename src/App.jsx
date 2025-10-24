@@ -5,6 +5,9 @@ import TodosPage from './pages/TodosPage';
 import Header from './shared/Header';
 import About from './pages/About';
 import NotFound from './pages/NotFound';
+import LoginPage from './features/Auth/LoginPage';
+import SignupPage from './features/Auth/SignupPage';
+
 
 
 import {
@@ -14,6 +17,9 @@ import {
 } from './reducers/todos.reducer';
 
 function App() {
+  const [currentUser, setCurrentUser] = useState(
+    JSON.parse(localStorage.getItem("currentUser")) || null
+  );
   const [todoState, dispatch] = useReducer(todosReducer, initialTodosState);
   const { todoList, isLoading, isSaving, errorMessage, sortField, sortDirection, queryString } = todoState;
 
@@ -24,16 +30,34 @@ function App() {
   const baseUrl = `https://api.airtable.com/v0/${import.meta.env.VITE_BASE_ID}/${import.meta.env.VITE_TABLE_NAME}`;
   const tableUrl = baseUrl;
 
-  // Update header title based on route
+  
+  //  logout handler
+  const handleLogout = () => {
+    localStorage.removeItem("currentUser");
+    setCurrentUser(null);
+  };
+
+  // Header title based on route
   useEffect(() => {
-    if (location.pathname === "/") {
-      setTitle("Todo List");
-    } else if (location.pathname === "/about") {
-      setTitle("About");
-    } else {
-      setTitle("Not Found");
+    switch (location.pathname) {
+      case "/":
+        setTitle("Todo List");
+        break;
+      case "/about":
+        setTitle("About");
+        break;
+      case "/login":
+        setTitle("Login");
+        break;
+      case "/signup":
+        setTitle("Sign Up");
+        break;
+      default:
+        setTitle("Not Found");
     }
   }, [location]);
+
+  
 
   // Encode URL
   const encodeUrl = useCallback(() => {
@@ -175,27 +199,37 @@ function App() {
 
   return (
     <>
-      <Header title={title} />
+      <Header title={title} user={currentUser} onLogout={handleLogout} />
       <Routes>
+        <Route
+          path="/login"
+          element={<LoginPage setCurrentUser={setCurrentUser} />}
+        />
+        <Route path="/signup" element={<SignupPage />} />
+
         <Route
           path="/"
           element={
-            <TodosPage
-              todoList={todoList}
-              isLoading={isLoading}
-              isSaving={isSaving}
-              errorMessage={errorMessage}
-              sortField={sortField}
-              sortDirection={sortDirection}
-              queryString={queryString}
-              addTodo={addTodo}
-              handleCompleteTodo={handleCompleteTodo}
-              updateTodo={updateTodo}
-              setSortField={(field) => dispatch({ type: todoActions.setSortField, payload: field })}
-              setSortDirection={(dir) => dispatch({ type: todoActions.setSortDirection, payload: dir })}
-              setQueryString={(q) => dispatch({ type: todoActions.setQueryString, payload: q })}
-              clearError={() => dispatch({ type: todoActions.clearError })}
-            />
+            currentUser ? (
+              <TodosPage
+                todoList={todoList}
+                isLoading={isLoading}
+                isSaving={isSaving}
+                errorMessage={errorMessage}
+                sortField={sortField}
+                sortDirection={sortDirection}
+                queryString={queryString}
+                addTodo={addTodo}
+                handleCompleteTodo={handleCompleteTodo}
+                updateTodo={updateTodo}
+                setSortField={(field) => dispatch({ type: todoActions.setSortField, payload: field })}
+                setSortDirection={(dir) => dispatch({ type: todoActions.setSortDirection, payload: dir })}
+                setQueryString={(q) => dispatch({ type: todoActions.setQueryString, payload: q })}
+                clearError={() => dispatch({ type: todoActions.clearError })}
+              />
+            ) : (
+              <LoginPage setCurrentUser={setCurrentUser} />
+            )
           }
         />
         <Route path="/about" element={<About />} />
@@ -206,4 +240,3 @@ function App() {
 }
 
 export default App;
-
